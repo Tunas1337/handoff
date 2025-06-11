@@ -1,19 +1,31 @@
 import sys
 import os
 import time
+import ctypes
 
 # This script is primarily designed for Windows due to the use of the winreg module.
 # Administrator privileges are required to write to the HKEY_CLASSES_ROOT registry hive.
 
 SCHEME_NAME = "andrejlauncher"
 
+# Dictionary to map URI schemes to application paths
+APP_MAPPING = {
+    "andrejlauncher://calculator/": "C:/Windows/System32/calc.exe",
+    "andrejlauncher://explorer/": "C:/Windows/explorer.exe",
+    "andrejlauncher://terminal/": "C:/Windows/System32/wt.exe"
+}
+
 def handle_uri(uri):
     """
     This function is executed when the script is invoked via its custom URI scheme.
     """
-    print(f"Script launched with URI: {uri}")
-    print("This window will close in 5 seconds...")
-    time.sleep(5)
+    # Open the application requested by the URI
+    if uri in APP_MAPPING:
+        os.startfile(APP_MAPPING[uri])
+    else:
+        # Make message box
+        ctypes.windll.user32.MessageBoxW(0, f"Invalid URI: {uri}", "Error", 0)
+
 
 def register_for_windows():
     """
@@ -53,8 +65,14 @@ def register_for_windows():
             # Check if the key already exists
             try:
                 winreg.OpenKey(hkey, SCHEME_NAME)
-                print(f"The '{SCHEME_NAME}://' URI scheme is already registered. No action needed.")
-                return
+                # The key already exists, but we want to re-add it in case the script or Python path has changed.
+                # So, delete the existing key and re-create it.
+                winreg.DeleteKey(hkey, fr"{SCHEME_NAME}\shell\open\command")
+                winreg.DeleteKey(hkey, fr"{SCHEME_NAME}\shell\open")
+                winreg.DeleteKey(hkey, fr"{SCHEME_NAME}\shell")
+                winreg.DeleteKey(hkey, SCHEME_NAME)
+                # Now proceed to create the key as if it didn't exist
+                raise FileNotFoundError # ;)
             except FileNotFoundError:
                 # Create the main scheme key: HKEY_CLASSES_ROOT\andrejlauncher
                 with winreg.CreateKey(hkey, SCHEME_NAME) as scheme_key:
@@ -70,6 +88,7 @@ def register_for_windows():
         
         print(f"Successfully registered the '{SCHEME_NAME}://' URI scheme.")
         print("You can now test it by opening a link like 'andrejlauncher://test-data'")
+        input("Press Enter to exit...")
 
     except Exception as e:
         print(f"An error occurred while writing to the registry: {e}")
