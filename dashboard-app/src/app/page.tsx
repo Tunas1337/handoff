@@ -1,53 +1,32 @@
 'use client';
 
-import { useState } from 'react';
-
-interface Shortcut {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  uri: string;
-  color: string;
-}
-
-const shortcuts: Shortcut[] = [
-  {
-    id: 'calculator',
-    name: 'Calculator',
-    description: 'Launch Windows Calculator',
-    icon: '🧮',
-    uri: 'andrejlauncher://calculator',
-    color: 'bg-blue-500 hover:bg-blue-600'
-  },
-  {
-    id: 'linkedin',
-    name: 'LinkedIn',
-    description: 'Open LinkedIn in browser',
-    icon: '💼',
-    uri: 'https://www.linkedin.com/',
-    color: 'bg-blue-600 hover:bg-blue-700'
-  },
-  {
-    id: 'explorer',
-    name: 'Windows Explorer',
-    description: 'Open File Explorer',
-    icon: '📁',
-    uri: 'andrejlauncher://explorer',
-    color: 'bg-green-500 hover:bg-green-600'
-  },
-  {
-    id: 'terminal',
-    name: 'Windows Terminal',
-    description: 'Launch Windows Terminal',
-    icon: '💻',
-    uri: 'andrejlauncher://terminal',
-    color: 'bg-gray-700 hover:bg-gray-800'
-  }
-];
+import { useState, useEffect } from 'react';
+import { Shortcut, fetchShortcuts } from '@/lib/shortcuts';
 
 export default function Dashboard() {
   const [clickedShortcut, setClickedShortcut] = useState<string | null>(null);
+  const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch shortcuts on component mount
+  useEffect(() => {
+    const loadShortcuts = async () => {
+      try {
+        setLoading(true);
+        const fetchedShortcuts = await fetchShortcuts();
+        setShortcuts(fetchedShortcuts);
+        setError(null);
+      } catch (err) {
+        console.error('Error loading shortcuts:', err);
+        setError('Failed to load shortcuts');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadShortcuts();
+  }, []);
 
   const handleShortcutClick = (shortcut: Shortcut) => {
     setClickedShortcut(shortcut.id);
@@ -100,44 +79,58 @@ export default function Dashboard() {
         </div>
 
         {/* Shortcuts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {shortcuts.map((shortcut) => (
-            <div
-              key={shortcut.id}
-              className={`group relative overflow-hidden rounded-xl p-6 cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
-                clickedShortcut === shortcut.id 
-                  ? 'ring-4 ring-yellow-400 ring-opacity-50' 
-                  : 'hover:ring-2 hover:ring-white/20'
-              }`}
-              onClick={() => handleShortcutClick(shortcut)}
-            >
-              {/* Background gradient */}
-              <div className={`absolute inset-0 ${shortcut.color} opacity-90 group-hover:opacity-100 transition-opacity duration-300`} />
-              
-              {/* Content */}
-              <div className="relative z-10">
-                <div className="text-4xl mb-4">{shortcut.icon}</div>
-                <h3 className="text-xl font-bold text-white mb-2">{shortcut.name}</h3>
-                <p className="text-white/80 text-sm">{shortcut.description}</p>
-                
-                {/* Click indicator */}
-                {clickedShortcut === shortcut.id && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
-                  </div>
-                )}
-              </div>
-
-              {/* Hover effect overlay */}
-              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-gray-300">Loading shortcuts...</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 text-center">
+            <p className="text-red-400 mb-2">⚠️ {error}</p>
+            <p className="text-gray-300 text-sm">Using fallback shortcuts</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {shortcuts.map((shortcut) => (
+              <div
+                key={shortcut.id}
+                className={`group relative overflow-hidden rounded-xl p-6 cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                  clickedShortcut === shortcut.id 
+                    ? 'ring-4 ring-yellow-400 ring-opacity-50' 
+                    : 'hover:ring-2 hover:ring-white/20'
+                }`}
+                onClick={() => handleShortcutClick(shortcut)}
+              >
+                {/* Background gradient */}
+                <div className={`absolute inset-0 ${shortcut.color} opacity-90 group-hover:opacity-100 transition-opacity duration-300`} />
+                
+                {/* Content */}
+                <div className="relative z-10">
+                  <div className="text-4xl mb-4">{shortcut.icon}</div>
+                  <h3 className="text-xl font-bold text-white mb-2">{shortcut.name}</h3>
+                  <p className="text-white/80 text-sm">{shortcut.description}</p>
+                  
+                  {/* Click indicator */}
+                  {clickedShortcut === shortcut.id && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Hover effect overlay */}
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="mt-16 bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10">
           <h3 className="text-2xl font-bold text-white mb-4">How it works</h3>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             <div>
               <h4 className="text-lg font-semibold text-blue-400 mb-2">andrejlauncher URI Scheme</h4>
               <p className="text-gray-300 mb-4">
@@ -149,7 +142,14 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-purple-400 mb-2">Setup Required</h4>
+              <h4 className="text-lg font-semibold text-purple-400 mb-2">MongoDB Integration</h4>
+              <p className="text-gray-300 mb-4">
+                Shortcuts are dynamically loaded from MongoDB. If the database is unavailable, 
+                the app gracefully falls back to default shortcuts.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-green-400 mb-2">Setup Required</h4>
               <p className="text-gray-300 mb-4">
                 Make sure you have the andrejlauncher.py script registered in your system. 
                 Run it as administrator to register the URI scheme.
