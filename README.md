@@ -2,6 +2,8 @@
 
 A beautiful Next.js dashboard that provides quick access to applications using the `andrejlauncher://` URI scheme.
 
+![Dashboard Screenshot](screenshot.png)
+
 ## Prerequisites
 
 Before using this dashboard, you need to set up:
